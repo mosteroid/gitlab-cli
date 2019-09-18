@@ -9,6 +9,7 @@ git:
   depth: 1
 
 before_script:
+  - go get github.com/inconshreveable/mousetrap
   - go get github.com/golangci/golangci-lint/cmd/golangci-lint
   - go get github.com/mitchellh/gox
 
