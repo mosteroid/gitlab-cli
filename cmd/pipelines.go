@@ -67,11 +67,11 @@ var runPipelinesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		gitlabClient := client.GetClient()
 
-		branches, _ := cmd.Flags().GetStringArray("branches")
+		refs, _ := cmd.Flags().GetStringArray("refs")
 		project, _ := cmd.Flags().GetString("project")
 
-		for _, branch := range branches {
-			opt := &gitlab.CreatePipelineOptions{Ref: gitlab.String(branch)}
+		for _, ref := range refs {
+			opt := &gitlab.CreatePipelineOptions{Ref: gitlab.String(ref)}
 			_, _, err := gitlabClient.Pipelines.CreatePipeline(project, opt)
 			if err != nil {
 				log.Fatal(err)
@@ -89,6 +89,6 @@ func init() {
 	pipelinesCmd.PersistentFlags().StringP("project", "p", "", "Set the project name or project ID")
 	cobra.MarkFlagRequired(pipelinesCmd.PersistentFlags(), "project")
 
-	runPipelinesCmd.Flags().StringArrayP("branches", "b", []string{}, "Set the branches list")
-	cobra.MarkFlagRequired(runPipelinesCmd.Flags(), "branches")
+	runPipelinesCmd.Flags().StringArrayP("refs", "r", []string{}, "Set the refs list")
+	cobra.MarkFlagRequired(runPipelinesCmd.Flags(), "refs")
 }
