@@ -31,16 +31,28 @@ var pipelinesCmd = &cobra.Command{
 	// Run: func(cmd *cobra.Command, args []string) {},
 }
 
-// listCmd represents the run command
+// listPipelinesCmd represents the run command
 var listPipelinesCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List a project pipelines",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
+		gitlabClient := client.GetClient()
+
+		project, _ := cmd.Flags().GetString("project")
+		opt := &gitlab.ListProjectPipelinesOptions{}
+
+		pipelines, _, _ := gitlabClient.Pipelines.ListProjectPipelines(project, opt)
+
+		for index, pipeline := range pipelines {
+			fmt.Printf("%d) %d: %s\n", index, pipeline.ID, pipeline.Status)
+
+		}
+
 	},
 }
 
-// runCmd represents the run command
+// runPipelinesCmd represents the run command
 var runPipelinesCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run pipelines",
@@ -64,12 +76,12 @@ var runPipelinesCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(pipelinesCmd)
-
 	pipelinesCmd.AddCommand(runPipelinesCmd)
+	pipelinesCmd.AddCommand(listPipelinesCmd)
+
+	pipelinesCmd.PersistentFlags().StringP("project", "p", "", "Set the project name or project ID")
+	cobra.MarkFlagRequired(pipelinesCmd.PersistentFlags(), "project")
 
 	runPipelinesCmd.Flags().StringArrayP("branches", "b", []string{}, "Set the branches list")
-	runPipelinesCmd.Flags().StringP("project", "p", "", "Set the project name or project ID")
 	cobra.MarkFlagRequired(runPipelinesCmd.Flags(), "branches")
-	cobra.MarkFlagRequired(runPipelinesCmd.Flags(), "project")
-
 }

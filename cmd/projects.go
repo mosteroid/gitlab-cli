@@ -33,7 +33,7 @@ var projectsCmd = &cobra.Command{
 	// Run: func(cmd *cobra.Command, args []string) {},
 }
 
-// listCmd represents the list command
+// listProjectsCmd represents the list command
 var listProjectsCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Display the list of projects",
