@@ -17,7 +17,9 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
+	"github.com/jedib0t/go-pretty/table"
 	"github.com/mosteroid/gitlab-cli/client"
 	"github.com/spf13/cobra"
 	"github.com/xanzy/go-gitlab"
@@ -44,11 +46,16 @@ var listPipelinesCmd = &cobra.Command{
 
 		pipelines, _, _ := gitlabClient.Pipelines.ListProjectPipelines(project, opt)
 
-		for index, pipeline := range pipelines {
-			fmt.Printf("%d) %d: %s\n", index, pipeline.ID, pipeline.Status)
-
+		tw := table.NewWriter()
+		tw.Style().Options.DrawBorder = false
+		tw.Style().Options.SeparateColumns = false
+		tw.Style().Options.SeparateHeader = false
+		tw.Style().Options.SeparateRows = false
+		tw.AppendHeader(table.Row{"ID", "Branch", "Status", "SHA", "URL"})
+		for _, pipeline := range pipelines {
+			tw.AppendRow(table.Row{pipeline.ID, pipeline.Ref, pipeline.Status, pipeline.SHA, pipeline.WebURL})
 		}
-
+		fmt.Println(tw.Render())
 	},
 }
 
@@ -67,7 +74,7 @@ var runPipelinesCmd = &cobra.Command{
 			opt := &gitlab.CreatePipelineOptions{Ref: gitlab.String(branch)}
 			_, _, err := gitlabClient.Pipelines.CreatePipeline(project, opt)
 			if err != nil {
-				fmt.Println(err)
+				log.Fatal(err)
 			}
 		}
 

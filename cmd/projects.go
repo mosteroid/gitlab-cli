@@ -17,8 +17,9 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"log"
 
+	"github.com/jedib0t/go-pretty/table"
 	"github.com/mosteroid/gitlab-cli/client"
 
 	"github.com/spf13/cobra"
@@ -51,12 +52,20 @@ var listProjectsCmd = &cobra.Command{
 		projects, _, err := gitlabClient.Projects.ListProjects(opt)
 
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
-		for index, project := range projects {
-			fmt.Printf("%d) %s\n", index, project.PathWithNamespace)
+
+		tw := table.NewWriter()
+		tw.Style().Options.DrawBorder = false
+		tw.Style().Options.SeparateColumns = false
+		tw.Style().Options.SeparateHeader = false
+		tw.Style().Options.SeparateRows = false
+		tw.AppendHeader(table.Row{"ID", "Name", "Path"})
+		for _, project := range projects {
+			tw.AppendRow(table.Row{project.ID, project.Name, project.PathWithNamespace})
 		}
+
+		fmt.Println(tw.Render())
 	},
 }
 
@@ -64,7 +73,7 @@ func init() {
 	rootCmd.AddCommand(projectsCmd)
 	projectsCmd.AddCommand(listProjectsCmd)
 
-	listProjectsCmd.Flags().Int("limit", 10, "Sets the maximun number of results. The default value is 10")
+	listProjectsCmd.Flags().Int("limit", 10, "Set the maximun number of results. The default value is 10")
 
 	listProjectsCmd.Flags().String("search", "", "Search a project")
 

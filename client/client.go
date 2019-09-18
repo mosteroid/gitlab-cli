@@ -10,7 +10,7 @@ func InitClient(baseURL, accessToken string) {
 	client.SetBaseURL(baseURL)
 }
 
-// GetClient return the initialized gitlabe client
+// GetClient returns the initialized gitlabe client
 func GetClient() *gitlab.Client {
 	return client
 }
