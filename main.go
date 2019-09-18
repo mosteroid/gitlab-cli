@@ -16,7 +16,7 @@ limitations under the License.
 package main
 
 import (
-	"github.com/mosteroid/gitlab-cli/cmd"
+	"github.com/mosteroid/gitlabctl/cmd"
 )
 
 func main() {

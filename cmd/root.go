@@ -22,7 +22,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/mosteroid/gitlab-cli/client"
+	"github.com/mosteroid/gitlabctl/client"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -33,7 +33,7 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "gitlab-cli",
+	Use:   "gitlabctl",
 	Short: "Command line interface for gitlab",
 	Long:  ``,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -56,7 +56,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "Set the config file (default is $HOME/.gitlab-cli.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "Set the config file (default is $HOME/.gitlabctl.yaml)")
 
 	rootCmd.PersistentFlags().BoolP("insecure", "k", false, "Allow connections to SSL sites without certs")
 	viper.BindPFlag("gitlab.insecure", rootCmd.PersistentFlags().Lookup("insecure"))
@@ -82,9 +82,9 @@ func initConfig() {
 			os.Exit(1)
 		}
 
-		// Search config in home directory with name ".gitlab-cli" (without extension).
+		// Search config in home directory with name ".gitlabctl" (without extension).
 		viper.AddConfigPath(home)
-		viper.SetConfigName(".gitlab-cli")
+		viper.SetConfigName(".gitlabctl")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

@@ -1,34 +1,31 @@
-# use the latest ubuntu environment (18.04) available on travis
 dist: xenial
 
 language: go
 
-# You don't need to test on very old versions of the Go compiler. It's the user's
-# responsibility to keep their compiler up to date.
 go:
   - 1.13.x
 
-# Only clone the most recent commit.
 git:
   depth: 1
 
-# Skip the install step. Don't `go get` dependencies. Only build with the code
-# in vendor/
-install: true
-
-# Don't email me the results of the test runs.
-notifications:
-  email: false
-
-# Anything in before_script that returns a nonzero exit code will flunk the
-# build and immediately stop. It's sorta like having set -e enabled in bash.
-# Make sure golangci-lint is vendored.
 before_script:
   - go get github.com/golangci/golangci-lint/cmd/golangci-lint
+  - go get github.com/mitchellh/gox
 
-# script always runs to completion (set +e). If we have linter issues AND a
-# failing test, we want to see both. Configure golangci-lint with a
-# .golangci.yml file at the top level of your repo.
 script:
-  - golangci-lint run       # run a bunch of code checkers/linters in parallel
-  - go test -v -race ./...  # Run all the tests with the race detector enabled
+  - go get -t -v ./...
+  - golangci-lint run
+  - go test -v -race ./...
+  - go build -o bin/gitlabctl .
+  - gox -os="linux darwin windows" -arch="amd64" -output="logshare.." -ldflags "-X main.Rev=`git rev-parse --short HEAD`" -verbose ./...;
+
+deploy:
+  provider: releases
+  api_key:
+    secure: l2QreuZ/xF7MVhIQyJ31q/FfPq7163Bv/LSzjxuWpgqT2rxYN6nan31NRGiD/t0LVWmsLvDcdLlyE1az8lnGdFQ+ryMDd2LFDqFeSevS3HlhTBrEnEc1aY2fdi8p/TR8Wu4wdqjGKZWRCauqeVIOFHSXxr4JlkXGfmZXeUSqOLrbA7zT4lbuGpOTz/SPxZPjbv2AbDFm9yLz6pmELVbZV0BHfdMZEiQaLaR+d+BRE1NQiXdmrpTM4kBq+3sGhfzKhdZCTsIx1LhmlDAyQEJxRHFwoz475gm47NckMl30Ex3hsIupi6FeAUHzTM2deGrnwkN37PVJSnpeM/BUDcTzUc/h4Nv/KZOhJeAShEW5ME81FhA5r/6awIDpylVT2AE+UVJElMaKI3Wx6kOzm3D+eeQubKB4oDPHrxWrKU3+TuFk+3y27akfprdk0t+D00+3sc8sAw1Nar8luqTF846qCAKUXup5moRvnAqAlAEZxP36zqRsnkXK+QSNPcZh399QJby3dEyPYHdNEf8SvT7Ga4L631vyyIGEKxUQ+wTXkrizMVLWGn3/Mi15K5xpbOsbtAzMeLvIXmGWf3gdM9CSZlQiel9jz1hKGROFLRgroDakiHisLy501y/dXqrLf0X5d2m0JTPHGqODvNWJ1DX2AtYZUNwUN0VCI3F06zChKU0=
+  file:
+    - gitlabclt.windows.amd64.exe
+    - gitlabclt.darwin.amd64
+    - gitlabctl.linux.amd64
+  on:
+    repo: mosteroid/gitlabctl

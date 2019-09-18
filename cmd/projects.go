@@ -20,7 +20,7 @@ import (
 	"log"
 
 	"github.com/jedib0t/go-pretty/table"
-	"github.com/mosteroid/gitlab-cli/client"
+	"github.com/mosteroid/gitlabctl/client"
 
 	"github.com/spf13/cobra"
 	"github.com/xanzy/go-gitlab"
@@ -29,7 +29,7 @@ import (
 // projectsCmd represents the projects command
 var projectsCmd = &cobra.Command{
 	Use:   "projects",
-	Short: "Manage the projects",
+	Short: "Manage projects",
 	Long:  ``,
 	// Run: func(cmd *cobra.Command, args []string) {},
 }

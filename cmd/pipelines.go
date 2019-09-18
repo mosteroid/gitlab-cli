@@ -20,7 +20,7 @@ import (
 	"log"
 
 	"github.com/jedib0t/go-pretty/table"
-	"github.com/mosteroid/gitlab-cli/client"
+	"github.com/mosteroid/gitlabctl/client"
 	"github.com/spf13/cobra"
 	"github.com/xanzy/go-gitlab"
 )
@@ -28,7 +28,7 @@ import (
 // pipelinesCmd represents the pipelines command
 var pipelinesCmd = &cobra.Command{
 	Use:   "pipelines",
-	Short: "Manage the pipelines",
+	Short: "Manage pipelines",
 	Long:  ``,
 	// Run: func(cmd *cobra.Command, args []string) {},
 }

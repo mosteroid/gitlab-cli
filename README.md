@@ -1,14 +1,14 @@
-gitlab-cli
+gitlabctl
 =========
-[![Build Status](https://travis-ci.org/mosteroid/gitlab-cli.svg?branch=master)](https://travis-ci.org/mosteroid/gitlab-cli)
-[![Go Report Card](https://goreportcard.com/badge/github.com/mosteroid/gitlab-cli)](https://goreportcard.com/report/github.com/mosteroid/gitlab-cli)
+[![Build Status](https://travis-ci.org/mosteroid/gitlabctl.svg?branch=master)](https://travis-ci.org/mosteroid/gitlabctl)
+[![Go Report Card](https://goreportcard.com/badge/github.com/mosteroid/gitlabctl)](https://goreportcard.com/report/github.com/mosteroid/gitlabctl)
 
 The command line interface for gitlab.
 
 
 ```
 Usage:
-  gitlab-cli [command]
+  gitlabctl [command]
 
 Available Commands:
   help        Help about any command
@@ -18,14 +18,14 @@ Available Commands:
 Flags:
       --accessToken string   Set the user access token
       --baseUrl string       Set the gitlab base url
-      --config string        Set the config file (default is $HOME/.gitlab-cli.yaml)
-  -h, --help                 help for gitlab-cli
+      --config string        Set the config file (default is $HOME/.gitlabctl.yaml)
+  -h, --help                 help for gitlabctl
   -k, --insecure             Allow connections to SSL sites without certs
 
 ```
 
 ## Configuration File
-Create in your home directory the file **.gitlab-cli.yaml**.
+Create in your home directory the file **.gitlabctl.yaml**.
 
 The following table lists the configurable parameters and theirs default values.
 
