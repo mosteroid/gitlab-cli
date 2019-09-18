@@ -1,5 +1,5 @@
 /*
-Copyright © 2019 NAME HERE <EMAIL ADDRESS>
+Copyright © 2019 The Mosteroid Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/mosteroid/gitlab-cli/client"
 	"github.com/spf13/cobra"
-	"github.com/valebot/gitlab-cli/client"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
