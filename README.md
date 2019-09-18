@@ -1,6 +1,6 @@
 gitlab-cli
 =========
-
+[![Build Status](https://travis-ci.org/mosteroid/gitlab-cli.svg?branch=master)](https://travis-ci.org/mosteroid/gitlab-cli)
 [![Go Report Card](https://goreportcard.com/badge/github.com/mosteroid/gitlab-cli)](https://goreportcard.com/report/github.com/mosteroid/gitlab-cli)
 
 The command line interface for gitlab.
