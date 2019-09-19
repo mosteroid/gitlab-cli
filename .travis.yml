@@ -18,12 +18,12 @@ script:
   - go test -v -race ./...
   - go build -o bin/gitlabctl .
   - gox -os="linux darwin windows" -arch="amd64" -ldflags "-X main.Rev=`git rev-parse --short HEAD`" -verbose ./...;
-  - ls -la
 
 deploy:
   provider: releases
   api_key:
     secure: l2QreuZ/xF7MVhIQyJ31q/FfPq7163Bv/LSzjxuWpgqT2rxYN6nan31NRGiD/t0LVWmsLvDcdLlyE1az8lnGdFQ+ryMDd2LFDqFeSevS3HlhTBrEnEc1aY2fdi8p/TR8Wu4wdqjGKZWRCauqeVIOFHSXxr4JlkXGfmZXeUSqOLrbA7zT4lbuGpOTz/SPxZPjbv2AbDFm9yLz6pmELVbZV0BHfdMZEiQaLaR+d+BRE1NQiXdmrpTM4kBq+3sGhfzKhdZCTsIx1LhmlDAyQEJxRHFwoz475gm47NckMl30Ex3hsIupi6FeAUHzTM2deGrnwkN37PVJSnpeM/BUDcTzUc/h4Nv/KZOhJeAShEW5ME81FhA5r/6awIDpylVT2AE+UVJElMaKI3Wx6kOzm3D+eeQubKB4oDPHrxWrKU3+TuFk+3y27akfprdk0t+D00+3sc8sAw1Nar8luqTF846qCAKUXup5moRvnAqAlAEZxP36zqRsnkXK+QSNPcZh399QJby3dEyPYHdNEf8SvT7Ga4L631vyyIGEKxUQ+wTXkrizMVLWGn3/Mi15K5xpbOsbtAzMeLvIXmGWf3gdM9CSZlQiel9jz1hKGROFLRgroDakiHisLy501y/dXqrLf0X5d2m0JTPHGqODvNWJ1DX2AtYZUNwUN0VCI3F06zChKU0=
+  skip_cleanup: true
   file:
     - gitlabctl_windows_amd64.exe
     - gitlabctl_darwin_amd64
