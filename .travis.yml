@@ -16,7 +16,6 @@ before_script:
 script:
   #- golangci-lint run
   - go test -v -race ./...
-  - go build -o bin/gitlabctl .
   - gox -os="linux darwin windows" -arch="amd64" -ldflags "-X main.Rev=`git rev-parse --short HEAD`" -verbose ./...;
 
 deploy:
