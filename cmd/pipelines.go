@@ -59,6 +59,43 @@ var listPipelinesCmd = &cobra.Command{
 	},
 }
 
+// listJobsCmd represents the list pipeline jobs command
+var listJobsCmd = &cobra.Command{
+	Use:   "jobs",
+	Short: "List the jobs of a pipelines",
+	Long:  ``,
+	Run: func(cmd *cobra.Command, args []string) {
+		gitlabClient := client.GetClient()
+
+		project, _ := cmd.Flags().GetString("project")
+		pipeline, _ := cmd.Flags().GetInt("pipeline")
+
+		opt := &gitlab.ListJobsOptions{}
+
+		var jobs []gitlab.Job
+
+		if pipeline != -1 {
+			jobsPointers, _, _ := gitlabClient.Jobs.ListPipelineJobs(project, pipeline, opt)
+			for _, jobPointer := range jobsPointers {
+				jobs = append(jobs, *jobPointer)
+			}
+		} else {
+			jobs, _, _ = gitlabClient.Jobs.ListProjectJobs(project, opt)
+		}
+
+		tw := table.NewWriter()
+		tw.Style().Options.DrawBorder = false
+		tw.Style().Options.SeparateColumns = false
+		tw.Style().Options.SeparateHeader = false
+		tw.Style().Options.SeparateRows = false
+		tw.AppendHeader(table.Row{"ID", "NAME", "STAGE", "STATUS", "STARTED AT"})
+		for _, job := range jobs {
+			tw.AppendRow(table.Row{job.ID, job.Name, job.Stage, job.Status, job.StartedAt})
+		}
+		fmt.Println(tw.Render())
+	},
+}
+
 // runPipelinesCmd represents the run command
 var runPipelinesCmd = &cobra.Command{
 	Use:   "run",
@@ -85,10 +122,13 @@ func init() {
 	rootCmd.AddCommand(pipelinesCmd)
 	pipelinesCmd.AddCommand(runPipelinesCmd)
 	pipelinesCmd.AddCommand(listPipelinesCmd)
+	pipelinesCmd.AddCommand(listJobsCmd)
 
 	pipelinesCmd.PersistentFlags().StringP("project", "p", "", "Set the project name or project ID")
 	cobra.MarkFlagRequired(pipelinesCmd.PersistentFlags(), "project")
 
 	runPipelinesCmd.Flags().StringArrayP("refs", "r", []string{}, "Set the refs list")
 	cobra.MarkFlagRequired(runPipelinesCmd.Flags(), "refs")
+
+	listJobsCmd.Flags().Int("pipeline", -1, "List pipeline jobs")
 }
