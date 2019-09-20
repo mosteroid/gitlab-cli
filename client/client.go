@@ -32,7 +32,7 @@ type JobStats struct {
 }
 
 // GetProjectJobStats returns the project jobs stats
-func (client *Client) GetProjectJobStats(pid string) []*JobStats {
+func (client *Client) GetProjectJobsStats(pid string) []*JobStats {
 
 	var jobsStats = make([]*JobStats, 1)
 	opt := &gitlab.ListJobsOptions{}
