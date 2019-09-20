@@ -28,10 +28,13 @@ func GetClient() *Client {
 //JobStats rapresents the job stats
 type JobStats struct {
 	Name        string
+	Total       int
+	MaxDuration float64
+	MinDuration float64
 	AvgDuration float64
 }
 
-// GetProjectJobStats returns the project jobs stats
+// GetProjectJobsStats returns the project jobs stats
 func (client *Client) GetProjectJobsStats(pid string) []*JobStats {
 
 	var jobsStats = make([]*JobStats, 1)
@@ -42,21 +45,25 @@ func (client *Client) GetProjectJobsStats(pid string) []*JobStats {
 		log.Fatal(err)
 	}
 
-	jobsMap := make(map[string][]gitlab.Job)
+	jobsMap := make(map[string][]*gitlab.Job)
 	for _, job := range jobs {
-		jobsMap[job.Name] = append(jobsMap[job.Name], job)
+		jobsMap[job.Name] = append(jobsMap[job.Name], &job)
 	}
 
 	for _, jobs := range jobsMap {
+		minDuration, maxDuration := calcMinMaxDuration(jobs)
 		jobsStats = append(jobsStats, &JobStats{
 			Name:        jobs[0].Name,
+			Total:       len(jobs),
+			MinDuration: minDuration,
+			MaxDuration: maxDuration,
 			AvgDuration: calcAvgDuration(jobs),
 		})
 	}
 	return jobsStats
 }
 
-func calcAvgDuration(jobs []gitlab.Job) float64 {
+func calcAvgDuration(jobs []*gitlab.Job) float64 {
 
 	if jobs == nil {
 		return 0
@@ -78,4 +85,23 @@ func calcAvgDuration(jobs []gitlab.Job) float64 {
 	}
 
 	return 0
+}
+
+func calcMinMaxDuration(jobs []*gitlab.Job) (float64, float64) {
+	min := 0.0
+	max := 0.0
+
+	if jobs != nil {
+		for _, job := range jobs {
+
+			if job.Duration < min {
+				min = job.Duration
+			}
+			if job.Duration > max {
+				max = job.Duration
+			}
+		}
+	}
+
+	return min, max
 }
