@@ -88,9 +88,36 @@ var listJobsCmd = &cobra.Command{
 		tw.Style().Options.SeparateColumns = false
 		tw.Style().Options.SeparateHeader = false
 		tw.Style().Options.SeparateRows = false
+
 		tw.AppendHeader(table.Row{"ID", "NAME", "STAGE", "STATUS", "STARTED AT"})
 		for _, job := range jobs {
 			tw.AppendRow(table.Row{job.ID, job.Name, job.Stage, job.Status, job.StartedAt})
+		}
+		fmt.Println(tw.Render())
+	},
+}
+
+// listJobsStatsCmd represents the list jobs stats command
+var listJobsStatsCmd = &cobra.Command{
+	Use:   "stats",
+	Short: "List the stats of jobs",
+	Long:  ``,
+	Run: func(cmd *cobra.Command, args []string) {
+		gitlabClient := client.GetClient()
+
+		project, _ := cmd.Flags().GetString("project")
+
+		stats := gitlabClient.GetProjectJobsStats(project)
+
+		tw := table.NewWriter()
+		tw.Style().Options.DrawBorder = false
+		tw.Style().Options.SeparateColumns = false
+		tw.Style().Options.SeparateHeader = false
+		tw.Style().Options.SeparateRows = false
+
+		tw.AppendHeader(table.Row{"NAME", "MIN DURATION", "MAX DURATION", "AVG DURATION"})
+		for _, stat := range stats {
+			tw.AppendRow(table.Row{stat.Name, stat.MinDuration, stat.MaxDuration, stat.AvgDuration})
 		}
 		fmt.Println(tw.Render())
 	},
@@ -123,6 +150,7 @@ func init() {
 	pipelinesCmd.AddCommand(runPipelinesCmd)
 	pipelinesCmd.AddCommand(listPipelinesCmd)
 	pipelinesCmd.AddCommand(listJobsCmd)
+	listJobsCmd.AddCommand(listJobsStatsCmd)
 
 	pipelinesCmd.PersistentFlags().StringP("project", "p", "", "Set the project name or project ID")
 	cobra.MarkFlagRequired(pipelinesCmd.PersistentFlags(), "project")

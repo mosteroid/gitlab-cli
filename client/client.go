@@ -37,7 +37,7 @@ type JobStats struct {
 // GetProjectJobsStats returns the project jobs stats
 func (client *Client) GetProjectJobsStats(pid string) []*JobStats {
 
-	var jobsStats = make([]*JobStats, 1)
+	jobsStats := *new([]*JobStats)
 	opt := &gitlab.ListJobsOptions{}
 	jobs, _, err := client.Jobs.ListProjectJobs(pid, opt)
 
@@ -46,8 +46,8 @@ func (client *Client) GetProjectJobsStats(pid string) []*JobStats {
 	}
 
 	jobsMap := make(map[string][]*gitlab.Job)
-	for _, job := range jobs {
-		jobsMap[job.Name] = append(jobsMap[job.Name], &job)
+	for i := 0; i < len(jobs); i++ {
+		jobsMap[jobs[i].Name] = append(jobsMap[jobs[i].Name], &jobs[i])
 	}
 
 	for _, jobs := range jobsMap {
@@ -60,38 +60,35 @@ func (client *Client) GetProjectJobsStats(pid string) []*JobStats {
 			AvgDuration: calcAvgDuration(jobs),
 		})
 	}
+
 	return jobsStats
 }
 
 func calcAvgDuration(jobs []*gitlab.Job) float64 {
 
-	if jobs == nil {
+	if len(jobs) == 0 {
 		return 0
 	}
 
 	jobsNum := len(jobs)
-	if jobsNum > 0 {
-		medianIndex := (jobsNum / 2) - 1
-		jobsSlice := jobs[:]
-		sort.Slice(jobsSlice, func(i, j int) bool {
-			return jobsSlice[i].Duration < jobsSlice[j].Duration
-		})
+	medianIndex := jobsNum / 2
+	sort.SliceStable(jobs, func(i, j int) bool {
+		return jobs[i].Duration < jobs[j].Duration
+	})
 
-		if jobsNum%2 != 0 {
-			return jobsSlice[medianIndex].Duration
-		}
-
-		return (jobsSlice[medianIndex-1].Duration + jobsSlice[medianIndex+1].Duration) / 2
+	if jobsNum%2 != 0 {
+		return jobs[medianIndex].Duration
 	}
 
-	return 0
+	return (jobs[medianIndex-1].Duration + jobs[medianIndex].Duration) / 2
+
 }
 
 func calcMinMaxDuration(jobs []*gitlab.Job) (float64, float64) {
 	min := 0.0
 	max := 0.0
 
-	if jobs != nil {
+	if len(jobs) > 0 {
 		for _, job := range jobs {
 
 			if job.Duration < min {
