@@ -33,11 +33,6 @@ const (
 	WatchUpdateSleep = 1000 * time.Millisecond
 )
 
-type jobTracker struct {
-	Tracker   *progress.Tracker
-	StartTime time.Time
-}
-
 // pipelineCmd represents the pipelines command
 var pipelineCmd = &cobra.Command{
 	Use:   "pipeline",
@@ -143,6 +138,11 @@ var runCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		tw := util.NewTableWriter()
+		tw.AppendHeader(table.Row{"ID", "REF", "STATUS"})
+		tw.AppendRow(table.Row{pipeline.ID, pipeline.Ref, pipeline.Status})
+		fmt.Println(tw.Render())
+
 		if watch {
 			opt := &gitlab.ListJobsOptions{}
 			jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(project, pipeline.ID, opt)
@@ -156,28 +156,32 @@ var runCmd = &cobra.Command{
 			sw := util.NewStatusWriter()
 
 			pw.SetNumTrackersExpected(len(jobs))
-			pw.SetUpdateFrequency(500 * time.Millisecond)
+			pw.SetUpdateFrequency(WatchUpdateSleep)
+			fmt.Print("\n\nPipeline progress:\n")
 			go pw.Render()
-			trackersMap := make(map[int]*jobTracker)
+			trackersMap := make(map[int]*progress.Tracker)
+			jobStartTimeMap := make(map[int]time.Time)
 			done := false
 			for !done {
 				jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(project, pipeline.ID, opt)
 				for _, job := range jobs {
 					if _, ok := trackersMap[job.ID]; !ok {
-						if job.Status == "running" || job.Status == "success" {
-							total := int64(100)
-							if stat, ok := jobsStatsMap[job.Name]; ok {
-								total = int64(stat.AvgDuration)
-							}
-							trackersMap[job.ID] = &jobTracker{Tracker: &progress.Tracker{Message: fmt.Sprintf("%d) %s", job.ID, job.Name), Total: total, Units: progress.UnitsDefault}, StartTime: time.Now().UTC()}
-							pw.AppendTracker(trackersMap[job.ID].Tracker)
+						total := int64(100)
+						if stat, ok := jobsStatsMap[job.Name]; ok {
+							total = int64(stat.AvgDuration)
 						}
+						trackersMap[job.ID] = &progress.Tracker{Message: fmt.Sprintf("%d) %s", job.ID, job.Name), Total: total, Units: util.UnitTime}
+						pw.AppendTracker(trackersMap[job.ID])
 					} else {
 						if job.Status == "success" {
-							trackersMap[job.ID].Tracker.MarkAsDone()
-						} else {
-							duration := int64(time.Since(trackersMap[job.ID].StartTime) / time.Second)
-							trackersMap[job.ID].Tracker.SetValue(duration)
+							trackersMap[job.ID].MarkAsDone()
+						} else if job.Status == "running" {
+							if startTime, ok := jobStartTimeMap[job.ID]; ok {
+								duration := int64(time.Since(startTime) / time.Second)
+								trackersMap[job.ID].SetValue(duration)
+							} else {
+								jobStartTimeMap[job.ID] = time.Now().UTC()
+							}
 						}
 					}
 				}

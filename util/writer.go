@@ -1,11 +1,24 @@
 package util
 
 import (
+	"fmt"
+
 	"github.com/jedib0t/go-pretty/text"
 
 	"github.com/jedib0t/go-pretty/progress"
 	"github.com/jedib0t/go-pretty/table"
 )
+
+// UnitTime defines the value as a time unit.
+var UnitTime = progress.Units{
+	Notation:  "",
+	Formatter: FormatTime,
+}
+
+// FormatTime formats the given value as a "Time".
+func FormatTime(value int64) string {
+	return fmt.Sprintf("%ds", value)
+}
 
 // StatusWriter gitlab status writer
 type StatusWriter struct {
@@ -39,7 +52,7 @@ func NewProgressWriter() progress.Writer {
 	pw.SetAutoStop(false)
 	pw.SetTrackerLength(25)
 	pw.ShowOverallTracker(true)
-	pw.ShowTime(true)
+	pw.ShowTime(false)
 	pw.ShowTracker(true)
 	pw.ShowValue(true)
 	pw.SetMessageWidth(24)
