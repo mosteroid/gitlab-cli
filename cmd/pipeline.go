@@ -153,9 +153,10 @@ var runCmd = &cobra.Command{
 			}
 
 			pw := util.NewProgressWriter()
+			sw := util.NewStatusWriter()
 
 			pw.SetNumTrackersExpected(len(jobs))
-			pw.SetUpdateFrequency(WatchUpdateSleep)
+			pw.SetUpdateFrequency(500 * time.Millisecond)
 			go pw.Render()
 			trackersMap := make(map[int]*jobTracker)
 			done := false
@@ -168,7 +169,7 @@ var runCmd = &cobra.Command{
 							if stat, ok := jobsStatsMap[job.Name]; ok {
 								total = int64(stat.AvgDuration)
 							}
-							trackersMap[job.ID] = &jobTracker{Tracker: &progress.Tracker{Message: job.Name, Total: total, Units: progress.UnitsDefault}, StartTime: time.Now().UTC()}
+							trackersMap[job.ID] = &jobTracker{Tracker: &progress.Tracker{Message: fmt.Sprintf("%d) %s", job.ID, job.Name), Total: total, Units: progress.UnitsDefault}, StartTime: time.Now().UTC()}
 							pw.AppendTracker(trackersMap[job.ID].Tracker)
 						}
 					} else {
@@ -182,9 +183,9 @@ var runCmd = &cobra.Command{
 				}
 
 				pipeline, _, err := gitlabClient.Pipelines.GetPipeline(project, pipeline.ID)
-				if pipeline.Status != "running" || err != nil {
+				if pipeline.Status != "running" && pipeline.Status != "pending" || err != nil {
 					done = true
-					fmt.Println(pipeline.Status)
+					fmt.Printf("The pipeline %d exit with status: %s \n", pipeline.ID, sw.Sprintf(pipeline.Status))
 				} else {
 					time.Sleep(WatchUpdateSleep)
 				}
