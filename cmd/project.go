@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/mosteroid/gitlabctl/util"
+
 	"github.com/jedib0t/go-pretty/table"
 	"github.com/mosteroid/gitlabctl/client"
 
@@ -26,9 +28,9 @@ import (
 	"github.com/xanzy/go-gitlab"
 )
 
-// projectsCmd represents the projects command
-var projectsCmd = &cobra.Command{
-	Use:   "projects",
+// projectCmd represents the projects command
+var projectCmd = &cobra.Command{
+	Use:   "project",
 	Short: "Manage projects",
 	Long:  ``,
 	// Run: func(cmd *cobra.Command, args []string) {},
@@ -55,11 +57,7 @@ var listProjectsCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		tw := table.NewWriter()
-		tw.Style().Options.DrawBorder = false
-		tw.Style().Options.SeparateColumns = false
-		tw.Style().Options.SeparateHeader = false
-		tw.Style().Options.SeparateRows = false
+		tw := util.NewTableWriter()
 		tw.AppendHeader(table.Row{"ID", "Name", "Path"})
 		for _, project := range projects {
 			tw.AppendRow(table.Row{project.ID, project.Name, project.PathWithNamespace})
@@ -70,8 +68,8 @@ var listProjectsCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(projectsCmd)
-	projectsCmd.AddCommand(listProjectsCmd)
+	rootCmd.AddCommand(projectCmd)
+	projectCmd.AddCommand(listProjectsCmd)
 
 	listProjectsCmd.Flags().Int("limit", 10, "Set the maximun number of results. The default value is 10")
 

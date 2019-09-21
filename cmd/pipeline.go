@@ -23,13 +23,24 @@ import (
 	"github.com/jedib0t/go-pretty/progress"
 	"github.com/jedib0t/go-pretty/table"
 	"github.com/mosteroid/gitlabctl/client"
+	"github.com/mosteroid/gitlabctl/util"
 	"github.com/spf13/cobra"
 	"github.com/xanzy/go-gitlab"
 )
 
-// pipelinesCmd represents the pipelines command
-var pipelinesCmd = &cobra.Command{
-	Use:   "pipelines",
+const (
+	// WatchUpdateSleep the watch sleep
+	WatchUpdateSleep = 1000 * time.Millisecond
+)
+
+type jobTracker struct {
+	Tracker   *progress.Tracker
+	StartTime time.Time
+}
+
+// pipelineCmd represents the pipelines command
+var pipelineCmd = &cobra.Command{
+	Use:   "pipeline",
 	Short: "Manage pipelines",
 	Long:  ``,
 	// Run: func(cmd *cobra.Command, args []string) {},
@@ -48,11 +59,8 @@ var listPipelinesCmd = &cobra.Command{
 
 		pipelines, _, _ := gitlabClient.Pipelines.ListProjectPipelines(project, opt)
 
-		tw := table.NewWriter()
-		tw.Style().Options.DrawBorder = false
-		tw.Style().Options.SeparateColumns = false
-		tw.Style().Options.SeparateHeader = false
-		tw.Style().Options.SeparateRows = false
+		tw := util.NewTableWriter()
+
 		tw.AppendHeader(table.Row{"ID", "Branch", "Status", "SHA", "URL"})
 		for _, pipeline := range pipelines {
 			tw.AppendRow(table.Row{pipeline.ID, pipeline.Ref, pipeline.Status, pipeline.SHA, pipeline.WebURL})
@@ -61,8 +69,8 @@ var listPipelinesCmd = &cobra.Command{
 	},
 }
 
-// listJobsCmd represents the list pipeline jobs command
-var listJobsCmd = &cobra.Command{
+// jobsCmd represents the list pipeline jobs command
+var jobsCmd = &cobra.Command{
 	Use:   "jobs",
 	Short: "List the jobs of a pipelines",
 	Long:  ``,
@@ -85,11 +93,7 @@ var listJobsCmd = &cobra.Command{
 			jobs, _, _ = gitlabClient.Jobs.ListProjectJobs(project, opt)
 		}
 
-		tw := table.NewWriter()
-		tw.Style().Options.DrawBorder = false
-		tw.Style().Options.SeparateColumns = false
-		tw.Style().Options.SeparateHeader = false
-		tw.Style().Options.SeparateRows = false
+		tw := util.NewTableWriter()
 
 		tw.AppendHeader(table.Row{"ID", "NAME", "STAGE", "STATUS", "STARTED AT"})
 		for _, job := range jobs {
@@ -99,8 +103,8 @@ var listJobsCmd = &cobra.Command{
 	},
 }
 
-// listJobsStatsCmd represents the list jobs stats command
-var listJobsStatsCmd = &cobra.Command{
+// jobStatsCmd represents the list jobs stats command
+var jobStatsCmd = &cobra.Command{
 	Use:   "stats",
 	Short: "List the stats of jobs",
 	Long:  ``,
@@ -109,13 +113,9 @@ var listJobsStatsCmd = &cobra.Command{
 
 		project, _ := cmd.Flags().GetString("project")
 
-		stats := gitlabClient.GetProjectJobsStats(project)
+		stats, _ := gitlabClient.GetProjectJobsStats(project)
 
-		tw := table.NewWriter()
-		tw.Style().Options.DrawBorder = false
-		tw.Style().Options.SeparateColumns = false
-		tw.Style().Options.SeparateHeader = false
-		tw.Style().Options.SeparateRows = false
+		tw := util.NewTableWriter()
 
 		tw.AppendHeader(table.Row{"NAME", "MIN DURATION", "MAX DURATION", "AVG DURATION"})
 		for _, stat := range stats {
@@ -125,8 +125,8 @@ var listJobsStatsCmd = &cobra.Command{
 	},
 }
 
-// runPipelinesCmd represents the run command
-var runPipelinesCmd = &cobra.Command{
+// runCmd represents the run command
+var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run pipelines",
 	Long:  ``,
@@ -146,41 +146,48 @@ var runPipelinesCmd = &cobra.Command{
 		if watch {
 			opt := &gitlab.ListJobsOptions{}
 			jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(project, pipeline.ID, opt)
-			pw := progress.NewWriter()
-			pw.SetAutoStop(false)
-			pw.SetTrackerLength(25)
-			pw.ShowOverallTracker(true)
-			pw.ShowTime(true)
-			pw.ShowTracker(true)
-			pw.ShowValue(true)
-			pw.SetMessageWidth(24)
+			jobsStats, _ := gitlabClient.GetProjectJobsStats(project)
+			jobsStatsMap := make(map[string]*client.JobStats)
+			for _, stat := range jobsStats {
+				jobsStatsMap[stat.Name] = stat
+			}
+
+			pw := util.NewProgressWriter()
+
 			pw.SetNumTrackersExpected(len(jobs))
-			pw.SetSortBy(progress.SortByPercentDsc)
-			pw.SetStyle(progress.StyleDefault)
-			pw.SetTrackerPosition(progress.PositionRight)
-			pw.SetUpdateFrequency(time.Millisecond * 1000)
-			pw.Style().Colors = progress.StyleColorsExample
-			pw.Style().Options.PercentFormat = "%4.1f%%"
+			pw.SetUpdateFrequency(WatchUpdateSleep)
 			go pw.Render()
-			trackersMap := make(map[int]*progress.Tracker)
+			trackersMap := make(map[int]*jobTracker)
 			done := false
 			for !done {
 				jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(project, pipeline.ID, opt)
 				for _, job := range jobs {
 					if _, ok := trackersMap[job.ID]; !ok {
 						if job.Status == "running" || job.Status == "success" {
-							trackersMap[job.ID] = &progress.Tracker{Message: job.Name, Total: 100, Units: progress.UnitsDefault}
-							pw.AppendTracker(trackersMap[job.ID])
+							total := int64(100)
+							if stat, ok := jobsStatsMap[job.Name]; ok {
+								total = int64(stat.AvgDuration)
+							}
+							trackersMap[job.ID] = &jobTracker{Tracker: &progress.Tracker{Message: job.Name, Total: total, Units: progress.UnitsDefault}, StartTime: time.Now().UTC()}
+							pw.AppendTracker(trackersMap[job.ID].Tracker)
 						}
 					} else {
 						if job.Status == "success" {
-							trackersMap[job.ID].SetValue(100)
+							trackersMap[job.ID].Tracker.MarkAsDone()
 						} else {
-							trackersMap[job.ID].SetValue(int64(job.Coverage))
+							duration := int64(time.Since(trackersMap[job.ID].StartTime) / time.Second)
+							trackersMap[job.ID].Tracker.SetValue(duration)
 						}
 					}
 				}
-				time.Sleep(time.Millisecond * 1000)
+
+				pipeline, _, err := gitlabClient.Pipelines.GetPipeline(project, pipeline.ID)
+				if pipeline.Status != "running" || err != nil {
+					done = true
+					fmt.Println(pipeline.Status)
+				} else {
+					time.Sleep(WatchUpdateSleep)
+				}
 			}
 		}
 
@@ -188,19 +195,19 @@ var runPipelinesCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(pipelinesCmd)
-	pipelinesCmd.AddCommand(runPipelinesCmd)
-	pipelinesCmd.AddCommand(listPipelinesCmd)
-	pipelinesCmd.AddCommand(listJobsCmd)
-	listJobsCmd.AddCommand(listJobsStatsCmd)
+	rootCmd.AddCommand(pipelineCmd)
+	pipelineCmd.AddCommand(runCmd)
+	pipelineCmd.AddCommand(listPipelinesCmd)
+	pipelineCmd.AddCommand(jobsCmd)
+	jobsCmd.AddCommand(jobStatsCmd)
 
-	pipelinesCmd.PersistentFlags().StringP("project", "p", "", "Set the project name or project ID")
-	cobra.MarkFlagRequired(pipelinesCmd.PersistentFlags(), "project")
+	pipelineCmd.PersistentFlags().StringP("project", "p", "", "Set the project name or project ID")
+	cobra.MarkFlagRequired(pipelineCmd.PersistentFlags(), "project")
 
-	runPipelinesCmd.Flags().StringP("ref", "r", "", "Set the ref")
-	cobra.MarkFlagRequired(runPipelinesCmd.Flags(), "ref")
+	runCmd.Flags().StringP("ref", "r", "", "Set the ref")
+	cobra.MarkFlagRequired(runCmd.Flags(), "ref")
 
-	runPipelinesCmd.Flags().BoolP("watch", "w", false, "Watch the pipeline execution")
+	runCmd.Flags().BoolP("watch", "w", false, "Watch the pipeline execution")
 
-	listJobsCmd.Flags().Int("pipeline", -1, "List pipeline jobs")
+	jobsCmd.Flags().Int("pipeline", -1, "List pipeline jobs")
 }

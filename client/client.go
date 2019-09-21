@@ -1,7 +1,6 @@
 package client
 
 import (
-	"log"
 	"sort"
 
 	"github.com/xanzy/go-gitlab"
@@ -35,14 +34,14 @@ type JobStats struct {
 }
 
 // GetProjectJobsStats returns the project jobs stats
-func (client *Client) GetProjectJobsStats(pid string) []*JobStats {
+func (client *Client) GetProjectJobsStats(pid string) ([]*JobStats, error) {
 
 	jobsStats := *new([]*JobStats)
 	opt := &gitlab.ListJobsOptions{}
 	jobs, _, err := client.Jobs.ListProjectJobs(pid, opt)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	jobsMap := make(map[string][]*gitlab.Job)
@@ -61,7 +60,7 @@ func (client *Client) GetProjectJobsStats(pid string) []*JobStats {
 		})
 	}
 
-	return jobsStats
+	return jobsStats, nil
 }
 
 func calcAvgDuration(jobs []*gitlab.Job) float64 {
