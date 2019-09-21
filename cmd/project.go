@@ -49,7 +49,7 @@ var listProjectsCmd = &cobra.Command{
 		opt := &gitlab.ListProjectsOptions{
 			Membership:  gitlab.Bool(true),
 			Search:      gitlab.String(optSearchString),
-			ListOptions: gitlab.ListOptions{1, optLimit}}
+			ListOptions: gitlab.ListOptions{Page: 1, PerPage: optLimit}}
 
 		projects, _, err := gitlabClient.Projects.ListProjects(opt)
 

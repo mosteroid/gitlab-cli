@@ -14,9 +14,9 @@ type Client struct {
 var client *Client
 
 // InitClient initializes the gitlab client
-func InitClient(baseURL, accessToken string) {
+func InitClient(baseURL, accessToken string) error {
 	client = &Client{gitlab.NewClient(nil, accessToken)}
-	client.SetBaseURL(baseURL)
+	return client.SetBaseURL(baseURL)
 }
 
 // GetClient returns the initialized gitlabe client
