@@ -98,6 +98,23 @@ var jobsCmd = &cobra.Command{
 	},
 }
 
+//jobTraceCmd represents the trace job command
+var jobTraceCmd = &cobra.Command{
+	Use:   "trace",
+	Short: "Show job trace",
+	Long:  ``,
+	Run: func(cmd *cobra.Command, args []string) {
+		gitlabClient := client.GetClient()
+
+		project, _ := cmd.Flags().GetString("project")
+		job, _ := cmd.Flags().GetInt("job")
+
+		traceFile, _, _ := gitlabClient.Jobs.GetTraceFile(project, job)
+
+		fmt.Print(traceFile)
+	},
+}
+
 // jobStatsCmd represents the list jobs stats command
 var jobStatsCmd = &cobra.Command{
 	Use:   "stats",
@@ -205,6 +222,7 @@ func init() {
 	pipelineCmd.AddCommand(listPipelinesCmd)
 	pipelineCmd.AddCommand(jobsCmd)
 	jobsCmd.AddCommand(jobStatsCmd)
+	jobsCmd.AddCommand(jobTraceCmd)
 
 	pipelineCmd.PersistentFlags().StringP("project", "p", "", "Set the project name or project ID")
 	cobra.MarkFlagRequired(pipelineCmd.PersistentFlags(), "project")
@@ -215,4 +233,7 @@ func init() {
 	runCmd.Flags().BoolP("watch", "w", false, "Watch the pipeline execution")
 
 	jobsCmd.Flags().Int("pipeline", -1, "List pipeline jobs")
+	jobTraceCmd.Flags().IntP("job", "j", -1, "Set the job id")
+	cobra.MarkFlagRequired(jobTraceCmd.Flags(), "job")
+
 }
