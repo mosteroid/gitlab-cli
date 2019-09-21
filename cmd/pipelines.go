@@ -18,7 +18,9 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/jedib0t/go-pretty/progress"
 	"github.com/jedib0t/go-pretty/table"
 	"github.com/mosteroid/gitlabctl/client"
 	"github.com/spf13/cobra"
@@ -131,14 +133,54 @@ var runPipelinesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		gitlabClient := client.GetClient()
 
-		refs, _ := cmd.Flags().GetStringArray("refs")
+		ref, _ := cmd.Flags().GetString("ref")
 		project, _ := cmd.Flags().GetString("project")
+		watch, _ := cmd.Flags().GetBool("watch")
 
-		for _, ref := range refs {
-			opt := &gitlab.CreatePipelineOptions{Ref: gitlab.String(ref)}
-			_, _, err := gitlabClient.Pipelines.CreatePipeline(project, opt)
-			if err != nil {
-				log.Fatal(err)
+		opt := &gitlab.CreatePipelineOptions{Ref: gitlab.String(ref)}
+		pipeline, _, err := gitlabClient.Pipelines.CreatePipeline(project, opt)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if watch {
+			opt := &gitlab.ListJobsOptions{}
+			jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(project, pipeline.ID, opt)
+			pw := progress.NewWriter()
+			pw.SetAutoStop(false)
+			pw.SetTrackerLength(25)
+			pw.ShowOverallTracker(true)
+			pw.ShowTime(true)
+			pw.ShowTracker(true)
+			pw.ShowValue(true)
+			pw.SetMessageWidth(24)
+			pw.SetNumTrackersExpected(len(jobs))
+			pw.SetSortBy(progress.SortByPercentDsc)
+			pw.SetStyle(progress.StyleDefault)
+			pw.SetTrackerPosition(progress.PositionRight)
+			pw.SetUpdateFrequency(time.Millisecond * 1000)
+			pw.Style().Colors = progress.StyleColorsExample
+			pw.Style().Options.PercentFormat = "%4.1f%%"
+			go pw.Render()
+			trackersMap := make(map[int]*progress.Tracker)
+			done := false
+			for !done {
+				jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(project, pipeline.ID, opt)
+				for _, job := range jobs {
+					if _, ok := trackersMap[job.ID]; !ok {
+						if job.Status == "running" || job.Status == "success" {
+							trackersMap[job.ID] = &progress.Tracker{Message: job.Name, Total: 100, Units: progress.UnitsDefault}
+							pw.AppendTracker(trackersMap[job.ID])
+						}
+					} else {
+						if job.Status == "success" {
+							trackersMap[job.ID].SetValue(100)
+						} else {
+							trackersMap[job.ID].SetValue(int64(job.Coverage))
+						}
+					}
+				}
+				time.Sleep(time.Millisecond * 1000)
 			}
 		}
 
@@ -155,8 +197,10 @@ func init() {
 	pipelinesCmd.PersistentFlags().StringP("project", "p", "", "Set the project name or project ID")
 	cobra.MarkFlagRequired(pipelinesCmd.PersistentFlags(), "project")
 
-	runPipelinesCmd.Flags().StringArrayP("refs", "r", []string{}, "Set the refs list")
-	cobra.MarkFlagRequired(runPipelinesCmd.Flags(), "refs")
+	runPipelinesCmd.Flags().StringP("ref", "r", "", "Set the ref")
+	cobra.MarkFlagRequired(runPipelinesCmd.Flags(), "ref")
+
+	runPipelinesCmd.Flags().BoolP("watch", "w", false, "Watch the pipeline execution")
 
 	listJobsCmd.Flags().Int("pipeline", -1, "List pipeline jobs")
 }
