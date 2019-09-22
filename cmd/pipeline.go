@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -137,6 +138,85 @@ var jobStatsCmd = &cobra.Command{
 	},
 }
 
+func displayPipelineStatus(gitlabClient *client.Client, pid string, pipeline *gitlab.Pipeline, watch bool) error {
+
+	if pipeline == nil {
+		return errors.New("pipeline is required")
+	}
+
+	tw := util.NewTableWriter()
+	tw.AppendHeader(table.Row{"ID", "REF", "STATUS"})
+	tw.AppendRow(table.Row{pipeline.ID, pipeline.Ref, pipeline.Status})
+	fmt.Println(tw.Render())
+
+	if watch {
+		opt := &gitlab.ListJobsOptions{}
+		jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(pid, pipeline.ID, opt)
+		jobsStats, _ := gitlabClient.GetProjectJobsStats(pid)
+		jobsStatsMap := make(map[string]*client.JobStats)
+		for _, stat := range jobsStats {
+			jobsStatsMap[stat.Name] = stat
+		}
+
+		pw := util.NewProgressWriter()
+		sw := util.NewStatusWriter()
+
+		pw.SetNumTrackersExpected(len(jobs))
+		pw.SetUpdateFrequency(WatchUpdateSleep)
+		fmt.Print("\n\nPipeline progress:\n")
+		go pw.Render()
+		trackersMap := make(map[int]*progress.Tracker)
+		done := false
+		for !done {
+			jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(pid, pipeline.ID, opt)
+			for _, job := range jobs {
+				if _, ok := trackersMap[job.ID]; !ok {
+					total := int64(100)
+					if stat, ok := jobsStatsMap[job.Name]; ok {
+						total = int64(stat.AvgDuration)
+					}
+					trackersMap[job.ID] = &progress.Tracker{Message: fmt.Sprintf("%d) %s", job.ID, job.Name), Total: total, Units: util.UnitTime}
+					pw.AppendTracker(trackersMap[job.ID])
+				} else {
+					if job.Status == "success" {
+						trackersMap[job.ID].MarkAsDone()
+					} else if job.Status == "running" {
+						duration := int64(time.Since(*job.StartedAt) / time.Second)
+						trackersMap[job.ID].SetValue(duration)
+					}
+				}
+			}
+
+			pipeline, _, err := gitlabClient.Pipelines.GetPipeline(pid, pipeline.ID)
+			if pipeline.Status != "running" && pipeline.Status != "pending" || err != nil {
+				done = true
+				fmt.Printf("The pipeline %d exit with status: %s \n", pipeline.ID, sw.Sprintf(pipeline.Status))
+			} else {
+				time.Sleep(WatchUpdateSleep)
+			}
+		}
+	}
+
+	return nil
+}
+
+// runCmd represents the run command
+var pipelineStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Diplay a pipeline status",
+	Long:  ``,
+	Run: func(cmd *cobra.Command, args []string) {
+		gitlabClient := client.GetClient()
+
+		pid, _ := cmd.Flags().GetString("project")
+		pipelineID, _ := cmd.Flags().GetInt("pipeline")
+
+		pipeline, _, _ := gitlabClient.Pipelines.GetPipeline(pid, pipelineID)
+		watch := pipeline.Status == "running" || pipeline.Status == "pending"
+		displayPipelineStatus(gitlabClient, pid, pipeline, watch)
+	},
+}
+
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run",
@@ -146,68 +226,16 @@ var runCmd = &cobra.Command{
 		gitlabClient := client.GetClient()
 
 		ref, _ := cmd.Flags().GetString("ref")
-		project, _ := cmd.Flags().GetString("project")
+		pid, _ := cmd.Flags().GetString("project")
 		watch, _ := cmd.Flags().GetBool("watch")
 
 		opt := &gitlab.CreatePipelineOptions{Ref: gitlab.String(ref)}
-		pipeline, _, err := gitlabClient.Pipelines.CreatePipeline(project, opt)
+		pipeline, _, err := gitlabClient.Pipelines.CreatePipeline(pid, opt)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		tw := util.NewTableWriter()
-		tw.AppendHeader(table.Row{"ID", "REF", "STATUS"})
-		tw.AppendRow(table.Row{pipeline.ID, pipeline.Ref, pipeline.Status})
-		fmt.Println(tw.Render())
-
-		if watch {
-			opt := &gitlab.ListJobsOptions{}
-			jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(project, pipeline.ID, opt)
-			jobsStats, _ := gitlabClient.GetProjectJobsStats(project)
-			jobsStatsMap := make(map[string]*client.JobStats)
-			for _, stat := range jobsStats {
-				jobsStatsMap[stat.Name] = stat
-			}
-
-			pw := util.NewProgressWriter()
-			sw := util.NewStatusWriter()
-
-			pw.SetNumTrackersExpected(len(jobs))
-			pw.SetUpdateFrequency(WatchUpdateSleep)
-			fmt.Print("\n\nPipeline progress:\n")
-			go pw.Render()
-			trackersMap := make(map[int]*progress.Tracker)
-			done := false
-			for !done {
-				jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(project, pipeline.ID, opt)
-				for _, job := range jobs {
-					if _, ok := trackersMap[job.ID]; !ok {
-						total := int64(100)
-						if stat, ok := jobsStatsMap[job.Name]; ok {
-							total = int64(stat.AvgDuration)
-						}
-						trackersMap[job.ID] = &progress.Tracker{Message: fmt.Sprintf("%d) %s", job.ID, job.Name), Total: total, Units: util.UnitTime}
-						pw.AppendTracker(trackersMap[job.ID])
-					} else {
-						if job.Status == "success" {
-							trackersMap[job.ID].MarkAsDone()
-						} else if job.Status == "running" {
-							duration := int64(time.Since(*job.StartedAt) / time.Second)
-							trackersMap[job.ID].SetValue(duration)
-						}
-					}
-				}
-
-				pipeline, _, err := gitlabClient.Pipelines.GetPipeline(project, pipeline.ID)
-				if pipeline.Status != "running" && pipeline.Status != "pending" || err != nil {
-					done = true
-					fmt.Printf("The pipeline %d exit with status: %s \n", pipeline.ID, sw.Sprintf(pipeline.Status))
-				} else {
-					time.Sleep(WatchUpdateSleep)
-				}
-			}
-		}
-
+		displayPipelineStatus(gitlabClient, pid, pipeline, watch)
 	},
 }
 
@@ -216,6 +244,7 @@ func init() {
 	pipelineCmd.AddCommand(runCmd)
 	pipelineCmd.AddCommand(listPipelinesCmd)
 	pipelineCmd.AddCommand(jobsCmd)
+	pipelineCmd.AddCommand(pipelineStatusCmd)
 	jobsCmd.AddCommand(jobStatsCmd)
 	jobsCmd.AddCommand(jobTraceCmd)
 
@@ -225,9 +254,10 @@ func init() {
 	runCmd.Flags().StringP("ref", "r", "", "Set the ref")
 	cobra.MarkFlagRequired(runCmd.Flags(), "ref")
 
+	pipelineStatusCmd.Flags().IntP("pipeline", "l", -1, "Set the pipeline id")
 	runCmd.Flags().BoolP("watch", "w", false, "Watch the pipeline execution")
 
-	jobsCmd.Flags().Int("pipeline", -1, "List pipeline jobs")
+	jobsCmd.Flags().IntP("pipeline", "l", -1, "Set the pipeline id")
 	jobTraceCmd.Flags().IntP("job", "j", -1, "Set the job id")
 	cobra.MarkFlagRequired(jobTraceCmd.Flags(), "job")
 
