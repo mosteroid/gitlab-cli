@@ -11,9 +11,10 @@ Usage:
   gitlabctl [command]
 
 Available Commands:
+  config      Modify the configuration file
   help        Help about any command
-  pipelines   Manage the pipelines
-  projects    Manage the projects
+  pipeline    Manage pipelines
+  project     Manage projects
 
 Flags:
       --accessToken string   Set the user access token
@@ -22,6 +23,7 @@ Flags:
   -h, --help                 help for gitlabctl
   -k, --insecure             Allow connections to SSL sites without certs
 
+Use "gitlabctl [command] --help" for more information about a command.
 ```
 
 ## Configuration File
