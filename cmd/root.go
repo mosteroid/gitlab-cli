@@ -29,6 +29,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	//ConfigFilename the configuration file name
+	ConfigFilename = ".gitlabctl"
+)
+
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
@@ -84,7 +89,7 @@ func initConfig() {
 
 		// Search config in home directory with name ".gitlabctl" (without extension).
 		viper.AddConfigPath(home)
-		viper.SetConfigName(".gitlabctl")
+		viper.SetConfigName(ConfigFilename)
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

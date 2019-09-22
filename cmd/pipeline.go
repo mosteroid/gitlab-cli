@@ -177,7 +177,6 @@ var runCmd = &cobra.Command{
 			fmt.Print("\n\nPipeline progress:\n")
 			go pw.Render()
 			trackersMap := make(map[int]*progress.Tracker)
-			jobStartTimeMap := make(map[int]time.Time)
 			done := false
 			for !done {
 				jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(project, pipeline.ID, opt)
@@ -193,12 +192,8 @@ var runCmd = &cobra.Command{
 						if job.Status == "success" {
 							trackersMap[job.ID].MarkAsDone()
 						} else if job.Status == "running" {
-							if startTime, ok := jobStartTimeMap[job.ID]; ok {
-								duration := int64(time.Since(startTime) / time.Second)
-								trackersMap[job.ID].SetValue(duration)
-							} else {
-								jobStartTimeMap[job.ID] = time.Now().UTC()
-							}
+							duration := int64(time.Since(*job.StartedAt) / time.Second)
+							trackersMap[job.ID].SetValue(duration)
 						}
 					}
 				}
