@@ -28,14 +28,14 @@ import (
 // configCmd represents the config command
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "Modify .gitlabctl.yaml files",
+	Short: "Modify the configuration file",
 	Long:  ``,
 }
 
 var setPropertyCmd = &cobra.Command{
 	Use:   "set PROPERTY_NAME PROPERTY_VALUE",
-	Short: "Sets an individual value in the .gitlabctl.yaml file",
-	Long: `Sets an individual value in the .gitlabctl.yaml file
+	Short: "Sets an individual value in the configuration file",
+	Long: `Sets an individual value in the configuration file
 
 PROPERTY_NAME is a dot delimited name where each token represents either an attribute name or a map key.  Map keys may not contain dots. 
 	
@@ -60,8 +60,8 @@ PROPERTY_VALUE is the new value you wish to set.
 
 var unsetPropertyCmd = &cobra.Command{
 	Use:   "unset",
-	Short: "Unsets an individual value in the .gitlabctl.yaml file",
-	Long: `Unsets an individual value in the .gitlabctl.yaml file
+	Short: "Unsets an individual value in the configuration file",
+	Long: `Unsets an individual value in the configuration file
 	
 PROPERTY _NAME is a dot delimited name where each token represents either an attribute name or a map key.  Map keys may not contain dots.`,
 	Args: func(cmd *cobra.Command, args []string) error {
