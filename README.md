@@ -3,7 +3,7 @@ gitlabctl
 [![Build Status](https://travis-ci.org/mosteroid/gitlabctl.svg?branch=master)](https://travis-ci.org/mosteroid/gitlabctl)
 [![Go Report Card](https://goreportcard.com/badge/github.com/mosteroid/gitlabctl)](https://goreportcard.com/report/github.com/mosteroid/gitlabctl)
 
-The command line interface for gitlab.
+`gitlabct` is a command line interface for GitLab.
 
 
 ```
