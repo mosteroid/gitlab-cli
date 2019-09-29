@@ -13,6 +13,7 @@ Usage:
 Available Commands:
   config      Modify the configuration file
   help        Help about any command
+  job         Manage jobs
   pipeline    Manage pipelines
   project     Manage projects
 

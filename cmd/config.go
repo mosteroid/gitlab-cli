@@ -59,7 +59,7 @@ PROPERTY_VALUE is the new value you wish to set.
 }
 
 var unsetPropertyCmd = &cobra.Command{
-	Use:   "unset",
+	Use:   "unset PROPERTY_NAME",
 	Short: "Unsets an individual value in the configuration file",
 	Long: `Unsets an individual value in the configuration file
 	

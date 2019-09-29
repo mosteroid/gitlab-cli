@@ -57,7 +57,7 @@ var listPipelinesCmd = &cobra.Command{
 
 		tw := util.NewTableWriter()
 
-		tw.AppendHeader(table.Row{"ID", "Branch", "Status", "SHA", "URL"})
+		tw.AppendHeader(table.Row{"ID", "REF", "STATUS", "SHA", "URL"})
 		for _, pipeline := range pipelines {
 			tw.AppendRow(table.Row{pipeline.ID, pipeline.Ref, pipeline.Status, pipeline.SHA, pipeline.WebURL})
 		}
@@ -66,7 +66,7 @@ var listPipelinesCmd = &cobra.Command{
 }
 
 // jobsCmd represents the list pipeline jobs command
-var jobsCmd = &cobra.Command{
+var pipelineJobsCmd = &cobra.Command{
 	Use:   "jobs",
 	Short: "List the jobs of a pipelines",
 	Long:  ``,
@@ -99,45 +99,6 @@ var jobsCmd = &cobra.Command{
 	},
 }
 
-//jobTraceCmd represents the trace job command
-var jobTraceCmd = &cobra.Command{
-	Use:   "trace",
-	Short: "Show job trace",
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		gitlabClient := client.GetClient()
-
-		project, _ := cmd.Flags().GetString("project")
-		job, _ := cmd.Flags().GetInt("job")
-
-		traceFile, _, _ := gitlabClient.Jobs.GetTraceFile(project, job)
-
-		fmt.Print(traceFile)
-	},
-}
-
-// jobStatsCmd represents the list jobs stats command
-var jobStatsCmd = &cobra.Command{
-	Use:   "stats",
-	Short: "List the stats of jobs",
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		gitlabClient := client.GetClient()
-
-		project, _ := cmd.Flags().GetString("project")
-
-		stats, _ := gitlabClient.GetProjectJobsStats(project)
-
-		tw := util.NewTableWriter()
-
-		tw.AppendHeader(table.Row{"NAME", "MIN DURATION", "MAX DURATION", "AVG DURATION"})
-		for _, stat := range stats {
-			tw.AppendRow(table.Row{stat.Name, stat.MinDuration, stat.MaxDuration, stat.AvgDuration})
-		}
-		fmt.Println(tw.Render())
-	},
-}
-
 func displayPipelineStatus(gitlabClient *client.Client, pid string, pipeline *gitlab.Pipeline, watch bool) error {
 
 	if pipeline == nil {
@@ -154,9 +115,9 @@ func displayPipelineStatus(gitlabClient *client.Client, pid string, pipeline *gi
 
 	fmt.Print("\nPipeline jobs:\n")
 	twJob := util.NewTableWriter()
-	twJob.AppendHeader(table.Row{"ID", "NAME", "STATUS", "STARTED AT"})
+	twJob.AppendHeader(table.Row{"ID", "NAME", "STAGE", "STATUS", "STARTED AT"})
 	for _, job := range jobs {
-		twJob.AppendRow(table.Row{job.ID, job.Name, job.Status, job.StartedAt})
+		twJob.AppendRow(table.Row{job.ID, job.Name, job.Stage, job.Status, job.StartedAt})
 	}
 	fmt.Println(twJob.Render())
 
@@ -225,7 +186,7 @@ var pipelineStatusCmd = &cobra.Command{
 	},
 }
 
-// runCmd represents the run command
+// runPipelineCmd represents the run pipeline command
 var runPipelineCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run pipelines",
@@ -247,14 +208,33 @@ var runPipelineCmd = &cobra.Command{
 	},
 }
 
+// cancelPipelineCmd represents the cancel pipeline command
+var cancelPipelineCmd = &cobra.Command{
+	Use:   "cancel",
+	Short: "Run pipelines",
+	Long:  ``,
+	Run: func(cmd *cobra.Command, args []string) {
+		gitlabClient := client.GetClient()
+
+		pid, _ := cmd.Flags().GetString("project")
+		pipelineID, _ := cmd.Flags().GetInt("pipeline")
+
+		_, _, err := gitlabClient.Pipelines.CancelPipelineBuild(pid, pipelineID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println("Pipeline cancelled")
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(pipelineCmd)
 	pipelineCmd.AddCommand(runPipelineCmd)
 	pipelineCmd.AddCommand(listPipelinesCmd)
-	pipelineCmd.AddCommand(jobsCmd)
+	pipelineCmd.AddCommand(pipelineJobsCmd)
 	pipelineCmd.AddCommand(pipelineStatusCmd)
-	jobsCmd.AddCommand(jobStatsCmd)
-	jobsCmd.AddCommand(jobTraceCmd)
+	pipelineCmd.AddCommand(cancelPipelineCmd)
 
 	pipelineCmd.PersistentFlags().StringP("project", "p", "", "Set the project name or project ID")
 	cobra.MarkFlagRequired(pipelineCmd.PersistentFlags(), "project")
@@ -265,8 +245,7 @@ func init() {
 	pipelineStatusCmd.Flags().IntP("pipeline", "l", -1, "Set the pipeline id")
 	runPipelineCmd.Flags().BoolP("watch", "w", false, "Watch the pipeline execution")
 
-	jobsCmd.Flags().IntP("pipeline", "l", -1, "Set the pipeline id")
-	jobTraceCmd.Flags().IntP("job", "j", -1, "Set the job id")
-	cobra.MarkFlagRequired(jobTraceCmd.Flags(), "job")
+	cancelPipelineCmd.Flags().IntP("pipeline", "l", -1, "Set the pipeline id")
+	cobra.MarkFlagRequired(cancelPipelineCmd.Flags(), "pipeline")
 
 }
