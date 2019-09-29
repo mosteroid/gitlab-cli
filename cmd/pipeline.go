@@ -144,14 +144,24 @@ func displayPipelineStatus(gitlabClient *client.Client, pid string, pipeline *gi
 		return errors.New("pipeline is required")
 	}
 
-	tw := util.NewTableWriter()
-	tw.AppendHeader(table.Row{"ID", "REF", "STATUS"})
-	tw.AppendRow(table.Row{pipeline.ID, pipeline.Ref, pipeline.Status})
-	fmt.Println(tw.Render())
+	twPipe := util.NewTableWriter()
+	twPipe.AppendHeader(table.Row{"ID", "REF", "STATUS", "STARTED AT"})
+	twPipe.AppendRow(table.Row{pipeline.ID, pipeline.Ref, pipeline.Status, pipeline.StartedAt})
+	fmt.Println(twPipe.Render())
+
+	opt := &gitlab.ListJobsOptions{}
+	jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(pid, pipeline.ID, opt)
+
+	fmt.Print("\nPipeline jobs:\n")
+	twJob := util.NewTableWriter()
+	twJob.AppendHeader(table.Row{"ID", "NAME", "STATUS", "STARTED AT"})
+	for _, job := range jobs {
+		twJob.AppendRow(table.Row{job.ID, job.Name, job.Status, job.StartedAt})
+	}
+	fmt.Println(twJob.Render())
 
 	if watch {
-		opt := &gitlab.ListJobsOptions{}
-		jobs, _, _ := gitlabClient.Jobs.ListPipelineJobs(pid, pipeline.ID, opt)
+
 		jobsStats, _ := gitlabClient.GetProjectJobsStats(pid)
 		jobsStatsMap := make(map[string]*client.JobStats)
 		for _, stat := range jobsStats {
@@ -163,7 +173,7 @@ func displayPipelineStatus(gitlabClient *client.Client, pid string, pipeline *gi
 
 		pw.SetNumTrackersExpected(len(jobs))
 		pw.SetUpdateFrequency(WatchUpdateSleep)
-		fmt.Print("\n\nPipeline progress:\n")
+		fmt.Print("\nPipeline progress:\n")
 		go pw.Render()
 		trackersMap := make(map[int]*progress.Tracker)
 		done := false
@@ -178,13 +188,9 @@ func displayPipelineStatus(gitlabClient *client.Client, pid string, pipeline *gi
 					trackersMap[job.ID] = &progress.Tracker{Message: fmt.Sprintf("%d) %s", job.ID, job.Name), Total: total, Units: util.UnitTime}
 					pw.AppendTracker(trackersMap[job.ID])
 				} else {
+					trackersMap[job.ID].SetValue(int64(job.Duration))
 					if job.Status == "success" {
-						duration := int64(job.FinishedAt.Sub(*job.StartedAt).Seconds())
-						trackersMap[job.ID].SetValue(duration)
 						trackersMap[job.ID].MarkAsDone()
-					} else if job.Status == "running" {
-						duration := int64(time.Since(*job.StartedAt) / time.Second)
-						trackersMap[job.ID].SetValue(duration)
 					}
 				}
 			}
@@ -192,7 +198,7 @@ func displayPipelineStatus(gitlabClient *client.Client, pid string, pipeline *gi
 			pipeline, _, err := gitlabClient.Pipelines.GetPipeline(pid, pipeline.ID)
 			if pipeline.Status != "running" && pipeline.Status != "pending" || err != nil {
 				done = true
-				fmt.Printf("The pipeline %d exit with status: %s \n", pipeline.ID, sw.Sprintf(pipeline.Status))
+				fmt.Printf("\nThe pipeline %d exited with status: %s \n", pipeline.ID, sw.Sprintf(pipeline.Status))
 			} else {
 				time.Sleep(WatchUpdateSleep)
 			}
@@ -220,7 +226,7 @@ var pipelineStatusCmd = &cobra.Command{
 }
 
 // runCmd represents the run command
-var runCmd = &cobra.Command{
+var runPipelineCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run pipelines",
 	Long:  ``,
@@ -243,7 +249,7 @@ var runCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(pipelineCmd)
-	pipelineCmd.AddCommand(runCmd)
+	pipelineCmd.AddCommand(runPipelineCmd)
 	pipelineCmd.AddCommand(listPipelinesCmd)
 	pipelineCmd.AddCommand(jobsCmd)
 	pipelineCmd.AddCommand(pipelineStatusCmd)
@@ -253,11 +259,11 @@ func init() {
 	pipelineCmd.PersistentFlags().StringP("project", "p", "", "Set the project name or project ID")
 	cobra.MarkFlagRequired(pipelineCmd.PersistentFlags(), "project")
 
-	runCmd.Flags().StringP("ref", "r", "", "Set the ref")
-	cobra.MarkFlagRequired(runCmd.Flags(), "ref")
+	runPipelineCmd.Flags().StringP("ref", "r", "", "Set the ref")
+	cobra.MarkFlagRequired(runPipelineCmd.Flags(), "ref")
 
 	pipelineStatusCmd.Flags().IntP("pipeline", "l", -1, "Set the pipeline id")
-	runCmd.Flags().BoolP("watch", "w", false, "Watch the pipeline execution")
+	runPipelineCmd.Flags().BoolP("watch", "w", false, "Watch the pipeline execution")
 
 	jobsCmd.Flags().IntP("pipeline", "l", -1, "Set the pipeline id")
 	jobTraceCmd.Flags().IntP("job", "j", -1, "Set the job id")
