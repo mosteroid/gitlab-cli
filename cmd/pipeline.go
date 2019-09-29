@@ -179,6 +179,8 @@ func displayPipelineStatus(gitlabClient *client.Client, pid string, pipeline *gi
 					pw.AppendTracker(trackersMap[job.ID])
 				} else {
 					if job.Status == "success" {
+						duration := int64(job.FinishedAt.Sub(*job.StartedAt).Seconds())
+						trackersMap[job.ID].SetValue(duration)
 						trackersMap[job.ID].MarkAsDone()
 					} else if job.Status == "running" {
 						duration := int64(time.Since(*job.StartedAt) / time.Second)
