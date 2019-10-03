@@ -146,6 +146,6 @@ func init() {
 	jobsCmd.PersistentFlags().StringP("project", "p", "", "Set the project name or project ID")
 	cobra.MarkFlagRequired(jobsCmd.PersistentFlags(), "project")
 
-	jobsCmd.Flags().IntP("job", "j", -1, "Set the job id")
+	jobsCmd.PersistentFlags().IntP("job", "j", -1, "Set the job id")
 	cobra.MarkFlagRequired(jobsCmd.Flags(), "job")
 }
